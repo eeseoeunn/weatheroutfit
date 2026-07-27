@@ -1,20 +1,28 @@
-# Weather Outfit App (v2)
+# Weather Outfit App (v3)
 
-수정된 사항이 반영된 실시간 야외 날씨 제보 & 옷차림 추천 웹앱입니다.
+요청하신 모든 개선 기능이 반영된 실시간 야외 날씨 & 맞춤 옷차림 추천 웹앱입니다.
 
-## 수정 반영 사항
-1. `package.json` 추가 (`"type": "module"` 지정으로 Vercel ESM 컴파일 경고 해결)
-2. 사용자 역할 분리: 현장 사용자(날씨/체감 제보)와 추천 요청자(옷차림 추천 받기)의 UI 탭 분리
-3. 기온 수동 입력 제거: Open-Meteo API를 통한 선택 위치의 실시간 기온 백엔드 자동 조회
+## 🌟 이번 버전의 주요 변경 사항
+1. **정밀 기상 데이터 자동 수집 (Open-Meteo API):**
+   - 기온, 상대습도, 강수량(강수확률), UV 지수(햇빛 세기)를 자동 조회합니다.
+2. **조건별 AI 맞춤 추천 로직:**
+   - **제보 없을 시:** 정밀 기상 데이터(기온, 습도, 강수량, UV 지수) 기반 추천
+   - **제보 있을 시:** 정밀 기상 데이터 + 현장 제보 정보(체감 온도, 실시간 현장 상태) 종합 추천
+3. **제보자 자동 위치 파악 (GPS):**
+   - 브라우저 위치 권한을 통해 제보자의 위도/경도 수집 및 주소 자동 변환
+4. **목적지 위치 구체화:**
+   - 세부 구/동 단위 직접 입력 지원
+5. **텍스트 표준화:**
+   - 날씨 옵션 항목을 `비/흐림`으로 변경
 
-## 파일 구조
-- `package.json`: 모듈 타입 설정 및 프로젝트 메타데이터
-- `index.html`: 프론트엔드 (제보하기 & 추천받기 탭 UI)
-- `api/generate.js`: Vercel Serverless Function (실시간 기온 자동 조회 + Gemini API연동)
-- `README.md`: 프로젝트 설명 및 안내 문서
+## 📁 파일 구조
+- `package.json`: Vercel ESM 설정 (`"type": "module"`)
+- `index.html`: 프론트엔드 (추천받기 / 현장제보 탭 및 GPS 연동 UI)
+- `api/generate.js`: 백엔드 서버리스 함수 (날씨 API 연동 및 Gemini API)
+- `README.md`: 안내 문서
 
-## Vercel 배포 방법
-1. 압축을 해제한 모든 파일/폴더를 GitHub 저장소에 올립니다.
-2. Vercel에서 저장소를 임포트(Import)합니다.
-3. Project Settings > Environment Variables 메뉴에서 `GEMINI_API_KEY` 환경변수를 설정합니다.
-4. Deploy를 진행합니다.
+## 🚀 Vercel 배포 방법
+1. 압축을 해제한 프로젝트 파일 전체를 GitHub 저장소에 올립니다.
+2. Vercel에 저장소를 연동(Import)합니다.
+3. Vercel 설정(**Environment Variables**)에서 `GEMINI_API_KEY`를 등록합니다.
+4. 배포를 진행합니다.
