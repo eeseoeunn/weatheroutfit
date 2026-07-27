@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>실시간 날씨 & 현장 제보 기반 옷차림 추천</title>
+  <title>실시간 날씨 & 옷차림 맞춤 추천</title>
   <style>
     :root {
       --primary: #3B82F6;
@@ -121,12 +121,13 @@
 
     .result-box {
       margin-top: 20px;
-      padding: 16px;
+      padding: 18px;
       background-color: #F9FAFB;
-      border-left: 4px solid var(--primary);
-      border-radius: 4px;
+      border-radius: 12px;
+      border: 1px solid #E5E7EB;
       white-space: pre-line;
-      line-height: 1.6;
+      line-height: 1.8;
+      font-size: 0.95rem;
     }
 
     .status-badge {
@@ -153,36 +154,38 @@
   <!-- 1. 옷차림 추천받기 영역 -->
   <div id="recommendTab" class="section active">
     <div class="status-badge" id="reportStatus">
-      ℹ️ 등록된 제보가 없습니다. 기온/습도/강수량/햇빛 세기를 기반으로 추천합니다.
+      💡 등록된 제보가 없습니다. 기온, 습도, 강수량, 햇빛 세기를 기반으로 추천합니다.
     </div>
 
     <form id="recommendForm">
       <div class="form-group">
-        <label for="recCitySelect">목적지 주요 도시 선택</label>
-        <select id="recCitySelect" onchange="updateLocationInput()">
-          <option value="서울" data-lat="37.5665" data-lon="126.9780">서울</option>
-          <option value="서울 강남구" data-lat="37.4979" data-lon="127.0276">서울 강남구</option>
-          <option value="서울 마포구" data-lat="37.5663" data-lon="126.9016">서울 마포구 (홍대/상수)</option>
-          <option value="수원시" data-lat="37.2636" data-lon="127.0286">수원시</option>
-          <option value="인천" data-lat="37.4563" data-lon="126.7052">인천</option>
-          <option value="부산 해운대구" data-lat="35.1631" data-lon="129.1636">부산 해운대구</option>
-          <option value="대구" data-lat="35.8714" data-lon="128.6014">대구</option>
-          <option value="광주" data-lat="35.1595" data-lon="126.8526">광주</option>
-          <option value="대전" data-lat="36.3510" data-lon="127.3850">대전</option>
-          <option value="제주시" data-lat="33.4996" data-lon="126.5312">제주시</option>
+        <label for="recCitySelect">목적지 선택 (전국 17개 시/도)</label>
+        <select id="recCitySelect">
+          <option value="서울특별시" data-lat="37.5665" data-lon="126.9780">서울특별시</option>
+          <option value="부산광역시" data-lat="35.1796" data-lon="129.0756">부산광역시</option>
+          <option value="대구광역시" data-lat="35.8714" data-lon="128.6014">대구광역시</option>
+          <option value="인천광역시" data-lat="37.4563" data-lon="126.7052">인천광역시</option>
+          <option value="광주광역시" data-lat="35.1595" data-lon="126.8526">광주광역시</option>
+          <option value="대전광역시" data-lat="36.3510" data-lon="127.3850">대전광역시</option>
+          <option value="울산광역시" data-lat="35.5384" data-lon="129.3114">울산광역시</option>
+          <option value="세종특별자치시" data-lat="36.4800" data-lon="127.2890">세종특별자치시</option>
+          <option value="경기도" data-lat="37.2750" data-lon="127.0094">경기도</option>
+          <option value="강원특별자치도" data-lat="37.8853" data-lon="127.7298">강원특별자치도</option>
+          <option value="충청북도" data-lat="36.6358" data-lon="127.4914">충청북도</option>
+          <option value="충청남도" data-lat="36.6588" data-lon="126.6728">충청남도</option>
+          <option value="전라북도특별자치도" data-lat="35.8242" data-lon="127.1480">전라북도특별자치도</option>
+          <option value="전라남도" data-lat="34.8161" data-lon="126.4629">전라남도</option>
+          <option value="경상북도" data-lat="36.5760" data-lon="128.5056">경상북도</option>
+          <option value="경상남도" data-lat="35.2383" data-lon="128.6924">경상남도</option>
+          <option value="제주특별자치도" data-lat="33.4996" data-lon="126.5312">제주특별자치도</option>
         </select>
-      </div>
-
-      <div class="form-group">
-        <label for="recCustomLocation">상세 위치 직접 입력 (동/구/상세지역)</label>
-        <input type="text" id="recCustomLocation" placeholder="예: 서울시 성동구 성수동, 한강공원">
       </div>
 
       <button type="submit" class="submit-btn" id="recommendBtn">맞춤 옷차림 추천받기</button>
     </form>
 
     <div id="loading" style="display:none; text-align:center; margin-top:15px; color:#666;">
-      🤖 기상 데이터(기온, 습도, 강수량, UV)와 현장 제보를 분석 중입니다...
+      🤖 기상 데이터와 현장 제보를 분석 중입니다...
     </div>
     <div id="result" class="result-box" style="display:none;"></div>
   </div>
@@ -225,8 +228,7 @@
 </div>
 
 <script>
-  let sharedReport = null; // 제보 데이터가 없는 경우 null
-  let currentReportCoords = { lat: 37.5665, lon: 126.9780 };
+  let sharedReport = null;
 
   function switchTab(tabId) {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -241,12 +243,7 @@
     }
   }
 
-  function updateLocationInput() {
-    const select = document.getElementById('recCitySelect');
-    document.getElementById('recCustomLocation').value = select.value;
-  }
-
-  // 제보자 GPS 자동 수집 및 주소 변환
+  // 제보자 GPS 자동 위치 조회
   function getGPSLocation() {
     if (!navigator.geolocation) {
       alert("브라우저가 위치 서비스를 지원하지 않습니다.");
@@ -259,19 +256,18 @@
     navigator.geolocation.getCurrentPosition(async (position) => {
       const lat = position.coords.latitude;
       const lon = position.coords.longitude;
-      currentReportCoords = { lat, lon };
 
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
         const data = await res.json();
         const addr = data.address;
-        const locationName = `${addr.city || addr.province || ''} ${addr.suburb || addr.borough || addr.quarter || ''}`.trim() || "현재 위치";
+        const locationName = `${addr.province || addr.city || ''} ${addr.borough || addr.suburb || ''}`.trim() || "현재 위치";
         locInput.value = locationName;
       } catch (e) {
         locInput.value = `위도:${lat.toFixed(3)}, 경도:${lon.toFixed(3)}`;
       }
     }, () => {
-      alert("위치 정보를 가져올 수 없습니다. 위치 권한을 확인해주세요.");
+      alert("위치 정보를 가져올 수 없습니다.");
       locInput.value = "";
     });
   }
@@ -298,9 +294,8 @@
 
     const select = document.getElementById('recCitySelect');
     const selectedOption = select.options[select.selectedIndex];
-    const customLoc = document.getElementById('recCustomLocation').value;
 
-    const locationName = customLoc || select.value;
+    const locationName = select.value;
     const lat = selectedOption.dataset.lat;
     const lon = selectedOption.dataset.lon;
 

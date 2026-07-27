@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Open-Meteo API를 통한 기온, 습도, 강수량, UV 지수 조회
+    // 1. Open-Meteo API를 통한 정밀 기상 데이터 조회
     let weatherDetailText = "기상 데이터 조회 불가";
     if (lat && lon) {
       const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,uv_index&hourly=precipitation_probability&forecast_days=1`;
@@ -20,7 +20,7 @@ export default async function handler(req, res) {
       if (weatherRes.ok) {
         const wData = await weatherRes.json();
         const current = wData.current || {};
-        const pop = wData.hourly?.precipitation_probability?.[0] || 0; // 강수확률
+        const pop = wData.hourly?.precipitation_probability?.[0] || 0;
         
         weatherDetailText = `
 - 기온: ${current.temperature_2m ?? '알 수 없음'}°C
@@ -31,47 +31,46 @@ export default async function handler(req, res) {
       }
     }
 
-    // 2. 제보 여부에 따른 프롬프트 분기 생성
+    // 2. 제보 여부에 따른 설명 구성
     let reportPrompt = "";
     if (hasReport) {
       reportPrompt = `
-[현장 야외 이용자의 실시간 제보 정보]
+[현장 이용자의 실시간 제보]
 - 제보 위치: ${reportLocation || '목적지 인근'}
 - 현장 체감 온도: ${feelTemp}
 - 현장 날씨 상황: ${weatherCondition}
-* 참고: 실제 기상 데이터와 현장 제보 정보를 종합적으로 고려하여 추천해주세요.
+* 정밀 기상 데이터와 현장 제보를 함께 고려하세요.
       `.trim();
     } else {
       reportPrompt = `
 [현장 제보 정보]
-- 현재 등록된 현장 사용자 제보 정보가 없습니다.
-* 참고: 오직 정밀 기상 데이터(기온, 습도, 강수량, UV 지수)를 바탕으로 가장 적절한 옷차림을 추천해주세요.
+- 현재 등록된 현장 제보가 없습니다.
+* 정밀 기상 데이터(기온, 습도, 강수량, UV 지수)를 바탕으로 추천하세요.
       `.trim();
     }
 
+    // 3. Gemini API 프롬프트 (특수문자 * # @ 금지 규칙 명시)
     const prompt = `
-당신은 날씨 및 패션 코디 전문 AI 컨설턴트입니다.
-사용자가 방문하려는 목적지의 정밀 기상 데이터와 현장 사용자 제보(있는 경우)를 분석하여 최적의 옷차림과 준비물을 추천해주세요.
+당신은 친절한 패션 코디 AI입니다.
+사용자가 선택한 지역의 기상 데이터와 현장 제보(있는 경우)를 바탕으로 옷차림을 추천해주세요.
 
 [목적지 정보]
 - 위치: ${locationName}
 
-[목적지 실시간 기상 데이터]
+[목적지 기상 데이터]
 ${weatherDetailText}
 
 ${reportPrompt}
 
-[작성 가이드라인]
-1. 친근하고 세련된 톤앤매너로 작성하세요.
-2. 기온, 습도, 강수량, UV 지수(햇빛 세기) 및 제보 여부를 언급하며 현재 종합 날씨 상황을 2줄 이내로 요약하세요.
-3. 상의, 하의, 아우터, 신발 등 구체적이고 스타일리시한 옷차림을 추천하세요.
-4. 습도, 강수 여부, UV 지수(햇빛 강도)에 맞춰 우산, 양산, 선글라스, 자외선 차단제 등 필수 아이템을 추천하세요.
-5. 가독성이 뛰어난 마크다운 형식으로 보기 쉽게 작성해 주세요.
+[반드시 지켜야 할 작성 규칙]
+1. 특수문자(*, #, @, -, _, ~ 등 마크다운 기호)를 절대로 사용하지 마세요.
+2. 대신 이모티콘(👕, 👖, ☀️, ☂️ 등)은 자유롭게 사용하여 보기 편하고 깔끔하게 작성하세요.
+3. 별도의 마크다운 제목 기호(#) 없이 줄바꿈과 이모티콘만 사용하여 정갈하게 단락을 나누세요.
+4. 요약 설명, 추천 상의, 추천 하의, 추천 아우터, 추천 신발, 챙겨야 할 소지품 순서로 깔끔하게 정리해 주세요.
     `;
 
-    // 3. Gemini API 호출
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -87,7 +86,10 @@ ${reportPrompt}
     }
 
     const data = await response.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || '추천 결과를 생성할 수 없습니다.';
+    let reply = data.candidates?.[0]?.content?.parts?.[0]?.text || '추천 결과를 생성할 수 없습니다.';
+
+    // 백엔드 차원에서도 마크다운 특수문자(*, #, @) 2차 제거 안전장치
+    reply = reply.replace(/[*#@]/g, '');
 
     return res.status(200).json({ result: reply });
   } catch (error) {
