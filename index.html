@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>오늘 뭐 입지? - 야외 활동 옷차림 추천</title>
+  <style>
+    :root {
+      --primary: #4A90E2;
+      --bg: #F4F7F6;
+      --card-bg: #FFFFFF;
+      --text: #333333;
+    }
+
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 500px;
+      background: var(--card-bg);
+      padding: 24px;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      text-align: center;
+      margin-bottom: 20px;
+      color: var(--primary);
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #DDD;
+      border-radius: 8px;
+      box-sizing: border-box;
+      font-size: 0.95rem;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background-color: #357ABD;
+    }
+
+    button:disabled {
+      background-color: #CCC;
+    }
+
+    .result-box {
+      margin-top: 24px;
+      padding: 16px;
+      background-color: #F8F9FA;
+      border-left: 4px solid var(--primary);
+      border-radius: 4px;
+      white-space: pre-line;
+      line-height: 1.6;
+    }
+
+    .loading {
+      text-align: center;
+      color: #666;
+      display: none;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>☀️ 야외 리얼 옷차림 추천</h1>
+  <p style="font-size:0.85rem; color:#666; text-align:center;">지금 야외 날씨 상태를 공유하고 최적의 옷차림을 추천받아보세요!</p>
+  
+  <form id="outfitForm">
+    <div class="form-group">
+      <label for="location">현재 위치 (선택)</label>
+      <input type="text" id="location" placeholder="예: 서울 한강공원, 성수동">
+    </div>
+
+    <div class="form-group">
+      <label for="temp">현재 기온 (°C, 선택)</label>
+      <input type="number" id="temp" placeholder="예: 24">
+    </div>
+
+    <div class="form-group">
+      <label for="feelTemp">체감 온도 (필수)</label>
+      <select id="feelTemp" required>
+        <option value="매우 더움">매우 더움 🥵</option>
+        <option value="더움">더움 ☀️</option>
+        <option value="적당함" selected>적당함 😊</option>
+        <option value="쌀쌀함">쌀쌀함 🍃</option>
+        <option value="추움">추움 🥶</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="weatherCondition">날씨 상태 (필수)</label>
+      <select id="weatherCondition" required>
+        <option value="햇빛 강함">햇빛 강함 ☀️</option>
+        <option value="바람 많음">바람 많음 💨</option>
+        <option value="비/흐림">비 온다 / 흐림 🌧️</option>
+        <option value="적당함" selected>적당함/화창함 🌤️</option>
+      </select>
+    </div>
+
+    <button type="submit" id="submitBtn">옷차림 추천받기</button>
+  </form>
+
+  <div class="loading" id="loadingText">🤖 Gemini AI가 최적의 코디를 분석 중입니다...</div>
+  <div class="result-box" id="result" style="display: none;"></div>
+</div>
+
+<script>
+  document.getElementById('outfitForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const submitBtn = document.getElementById('submitBtn');
+    const loadingText = document.getElementById('loadingText');
+    const resultBox = document.getElementById('result');
+
+    const payload = {
+      location: document.getElementById('location').value,
+      temp: document.getElementById('temp').value,
+      feelTemp: document.getElementById('feelTemp').value,
+      weatherCondition: document.getElementById('weatherCondition').value
+    };
+
+    submitBtn.disabled = true;
+    loadingText.style.display = 'block';
+    resultBox.style.display = 'none';
+
+    try {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        resultBox.innerText = data.result;
+        resultBox.style.display = 'block';
+      } else {
+        alert('오류 발생: ' + (data.error || '알 수 없는 에러가 발생했습니다.'));
+      }
+    } catch (err) {
+      alert('네트워크 오류가 발생했습니다.');
+    } finally {
+      submitBtn.disabled = false;
+      loadingText.style.display = 'none';
+    }
+  });
+</script>
+
+</body>
+</html>
