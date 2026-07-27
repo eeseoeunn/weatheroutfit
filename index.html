@@ -8,6 +8,7 @@
     :root {
       --primary: #3B82F6;
       --accent: #10B981;
+      --danger: #EF4444;
       --bg: #F3F4F6;
       --card-bg: #FFFFFF;
       --text: #1F2937;
@@ -140,6 +141,47 @@
       border: 1px solid #BFDBFE;
       line-height: 1.6;
     }
+
+    /* 최근 제보 관리 박스 */
+    .my-reports-box {
+      margin-top: 20px;
+      padding: 14px;
+      background-color: #FEF2F2;
+      border: 1px solid #FECACA;
+      border-radius: 10px;
+    }
+
+    .my-reports-title {
+      font-weight: bold;
+      font-size: 0.9rem;
+      color: #991B1B;
+      margin-bottom: 8px;
+    }
+
+    .report-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px dashed #FCA5A5;
+      font-size: 0.85rem;
+    }
+
+    .report-item:last-child {
+      border-bottom: none;
+    }
+
+    .cancel-btn {
+      background-color: var(--danger);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: 0.78rem;
+      font-weight: bold;
+      cursor: pointer;
+      width: auto;
+    }
   </style>
 </head>
 <body>
@@ -242,16 +284,22 @@
 
       <button type="submit" class="report-btn">현장 제보 등록하기</button>
     </form>
+
+    <!-- 내 제보 목록 및 취소 영역 -->
+    <div id="myReportsContainer" class="my-reports-box" style="display: none;">
+      <div class="my-reports-title">📝 내가 등록한 최근 제보 (잘못 제보 시 취소)</div>
+      <div id="myReportsList"></div>
+    </div>
   </div>
 </div>
 
 <script>
-  // 저장된 제보 목록 (초기 더미 데이터 예시)
+  // 전체 저장된 제보 목록
   let reports = [
-    { city: "서울특별시", feelTemp: "더움", weather: "화창함" },
-    { city: "서울특별시", feelTemp: "더움", weather: "햇빛 강함" },
-    { city: "서울특별시", feelTemp: "적당함", weather: "화창함" },
-    { city: "경기도", feelTemp: "쌀쌀함", weather: "비/흐림" }
+    { id: 1, city: "서울특별시", feelTemp: "더움", weather: "화창함", isMine: false },
+    { id: 2, city: "서울특별시", feelTemp: "더움", weather: "햇빛 강함", isMine: false },
+    { id: 3, city: "서울특별시", feelTemp: "적당함", weather: "화창함", isMine: false },
+    { id: 4, city: "경기도", feelTemp: "쌀쌀함", weather: "비/흐림", isMine: false }
   ];
 
   function switchTab(tabId) {
@@ -265,10 +313,11 @@
     } else {
       document.querySelectorAll('.tab-btn')[1].classList.add('active');
       document.getElementById('reportTab').classList.add('active');
+      renderMyReports();
     }
   }
 
-  // 선택한 목적지에 제보가 있을 때만 통계(퍼센트) 정보 표시
+  // 선택한 목적지에 제보가 있을 때만 퍼센트 통계 표시
   function checkReportStatus() {
     const selectedCity = document.getElementById('recCitySelect').value;
     const cityReports = reports.filter(r => r.city === selectedCity);
@@ -281,8 +330,6 @@
     }
 
     const total = cityReports.length;
-    
-    // 체감 온도 및 날씨별 빈도 계산
     const feelCounts = {};
     const weatherCounts = {};
 
@@ -303,6 +350,41 @@
     box.innerHTML = `📢 <b>${selectedCity} 오늘 제보 요약 (총 ${total}건)</b><br>` +
                     `체감 온도: ${feelSummary}<br>` +
                     `현장 날씨: ${weatherSummary}`;
+  }
+
+  // 사용자가 등록한 제보 목록 표시 및 삭제(취소) 기능
+  function renderMyReports() {
+    const myReports = reports.filter(r => r.isMine);
+    const container = document.getElementById('myReportsContainer');
+    const listEl = document.getElementById('myReportsList');
+
+    if (myReports.length === 0) {
+      container.style.display = 'none';
+      return;
+    }
+
+    container.style.display = 'block';
+    listEl.innerHTML = '';
+
+    myReports.forEach(r => {
+      const item = document.createElement('div');
+      item.className = 'report-item';
+      item.innerHTML = `
+        <span>[${r.city}] ${r.feelTemp} / ${r.weather}</span>
+        <button class="cancel-btn" onclick="cancelReport(${r.id})">제보 취소</button>
+      `;
+      listEl.appendChild(item);
+    });
+  }
+
+  // 제보 취소 처리 함수
+  function cancelReport(id) {
+    if (confirm('해당 제보를 취소하시겠습니까?')) {
+      reports = reports.filter(r => r.id !== id);
+      alert('제보가 취소되었습니다.');
+      renderMyReports();
+      checkReportStatus();
+    }
   }
 
   // 제보자 GPS 자동 위치 조회
@@ -345,15 +427,24 @@
     const feelTemp = document.getElementById('repFeelTemp').value;
     const weather = document.getElementById('repWeather').value;
 
-    reports.push({ city, feelTemp, weather });
+    const newReport = {
+      id: Date.now(),
+      city,
+      feelTemp,
+      weather,
+      isMine: true
+    };
 
-    alert(`${city} 현장 제보가 성공적으로 등록되었습니다!`);
-    switchTab('recommendTab');
+    reports.push(newReport);
+
+    alert(`${city} 현장 제보가 등록되었습니다! 잘못 입력하셨다면 하단 목록에서 취소할 수 있습니다.`);
+    renderMyReports();
   });
 
-  // 초기화 시 선택된 도시의 제보 확인
+  // 초기화
   window.onload = function() {
     checkReportStatus();
+    renderMyReports();
   };
 
   // 옷차림 추천 요청
@@ -366,7 +457,6 @@
     const lat = selectedOption.dataset.lat;
     const lon = selectedOption.dataset.lon;
 
-    // 해당 지역 제보 요약 텍스트 생성
     const box = document.getElementById('reportStatusBox');
     const targetReportSummary = box.style.display !== 'none' ? box.innerText : '';
 
