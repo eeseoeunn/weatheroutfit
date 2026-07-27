@@ -133,11 +133,12 @@
     .status-badge {
       background: #EFF6FF;
       color: #1E40AF;
-      padding: 10px 12px;
+      padding: 12px;
       border-radius: 8px;
-      font-size: 0.85rem;
-      margin-bottom: 16px;
+      font-size: 0.88rem;
+      margin-top: 16px;
       border: 1px solid #BFDBFE;
+      line-height: 1.6;
     }
   </style>
 </head>
@@ -153,14 +154,10 @@
 
   <!-- 1. 옷차림 추천받기 영역 -->
   <div id="recommendTab" class="section active">
-    <div class="status-badge" id="reportStatus">
-      💡 등록된 제보가 없습니다. 기온, 습도, 강수량, 햇빛 세기를 기반으로 추천합니다.
-    </div>
-
     <form id="recommendForm">
       <div class="form-group">
         <label for="recCitySelect">목적지 선택 (전국 17개 시/도)</label>
-        <select id="recCitySelect">
+        <select id="recCitySelect" onchange="checkReportStatus()">
           <option value="서울특별시" data-lat="37.5665" data-lon="126.9780">서울특별시</option>
           <option value="부산광역시" data-lat="35.1796" data-lon="129.0756">부산광역시</option>
           <option value="대구광역시" data-lat="35.8714" data-lon="128.6014">대구광역시</option>
@@ -181,6 +178,9 @@
         </select>
       </div>
 
+      <!-- 선택된 목적지에 제보가 존재할 때만 나타나는 영역 -->
+      <div class="status-badge" id="reportStatusBox" style="display: none;"></div>
+
       <button type="submit" class="submit-btn" id="recommendBtn">맞춤 옷차림 추천받기</button>
     </form>
 
@@ -196,29 +196,47 @@
 
     <form id="reportForm">
       <div class="form-group">
-        <label for="repLocation">제보자 위치</label>
-        <input type="text" id="repLocation" placeholder="현위치를 불러오거나 직접 입력해주세요">
+        <label for="repCitySelect">제보 지역 선택</label>
+        <select id="repCitySelect">
+          <option value="서울특별시">서울특별시</option>
+          <option value="부산광역시">부산광역시</option>
+          <option value="대구광역시">대구광역시</option>
+          <option value="인천광역시">인천광역시</option>
+          <option value="광주광역시">광주광역시</option>
+          <option value="대전광역시">대전광역시</option>
+          <option value="울산광역시">울산광역시</option>
+          <option value="세종특별자치시">세종특별자치시</option>
+          <option value="경기도">경기도</option>
+          <option value="강원특별자치도">강원특별자치도</option>
+          <option value="충청북도">충청북도</option>
+          <option value="충청남도">충청남도</option>
+          <option value="전라북도특별자치도">전라북도특별자치도</option>
+          <option value="전라남도">전라남도</option>
+          <option value="경상북도">경상북도</option>
+          <option value="경상남도">경상남도</option>
+          <option value="제주특별자치도">제주특별자치도</option>
+        </select>
         <button type="button" class="gps-btn" onclick="getGPSLocation()">📍 현재 위치 자동으로 가져오기</button>
       </div>
 
       <div class="form-group">
         <label for="repFeelTemp">현재 체감 온도</label>
         <select id="repFeelTemp">
-          <option value="매우 더움 🥵">매우 더움 🥵</option>
-          <option value="더움 ☀️">더움 ☀️</option>
-          <option value="적당함 😊" selected>적당함 😊</option>
-          <option value="쌀쌀함 🍃">쌀쌀함 🍃</option>
-          <option value="추움 🥶">추움 🥶</option>
+          <option value="매우 더움">매우 더움 🥵</option>
+          <option value="더움">더움 ☀️</option>
+          <option value="적당함" selected>적당함 😊</option>
+          <option value="쌀쌀함">쌀쌀함 🍃</option>
+          <option value="추움">추움 🥶</option>
         </select>
       </div>
 
       <div class="form-group">
         <label for="repWeather">현재 현장 날씨</label>
         <select id="repWeather">
-          <option value="햇빛 강함 ☀️">햇빛 강함 ☀️</option>
-          <option value="바람 많음 💨">바람 많음 💨</option>
-          <option value="비/흐림 🌧️">비/흐림 🌧️</option>
-          <option value="적당함/화창함 🌤️" selected>적당함/화창함 🌤️</option>
+          <option value="햇빛 강함">햇빛 강함 ☀️</option>
+          <option value="바람 많음">바람 많음 💨</option>
+          <option value="비/흐림">비/흐림 🌧️</option>
+          <option value="화창함" selected>화창함 🌤️</option>
         </select>
       </div>
 
@@ -228,7 +246,13 @@
 </div>
 
 <script>
-  let sharedReport = null;
+  // 저장된 제보 목록 (초기 더미 데이터 예시)
+  let reports = [
+    { city: "서울특별시", feelTemp: "더움", weather: "화창함" },
+    { city: "서울특별시", feelTemp: "더움", weather: "햇빛 강함" },
+    { city: "서울특별시", feelTemp: "적당함", weather: "화창함" },
+    { city: "경기도", feelTemp: "쌀쌀함", weather: "비/흐림" }
+  ];
 
   function switchTab(tabId) {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -237,10 +261,48 @@
     if (tabId === 'recommendTab') {
       document.querySelectorAll('.tab-btn')[0].classList.add('active');
       document.getElementById('recommendTab').classList.add('active');
+      checkReportStatus();
     } else {
       document.querySelectorAll('.tab-btn')[1].classList.add('active');
       document.getElementById('reportTab').classList.add('active');
     }
+  }
+
+  // 선택한 목적지에 제보가 있을 때만 통계(퍼센트) 정보 표시
+  function checkReportStatus() {
+    const selectedCity = document.getElementById('recCitySelect').value;
+    const cityReports = reports.filter(r => r.city === selectedCity);
+    const box = document.getElementById('reportStatusBox');
+
+    if (cityReports.length === 0) {
+      box.style.display = 'none';
+      box.innerText = '';
+      return;
+    }
+
+    const total = cityReports.length;
+    
+    // 체감 온도 및 날씨별 빈도 계산
+    const feelCounts = {};
+    const weatherCounts = {};
+
+    cityReports.forEach(r => {
+      feelCounts[r.feelTemp] = (feelCounts[r.feelTemp] || 0) + 1;
+      weatherCounts[r.weather] = (weatherCounts[r.weather] || 0) + 1;
+    });
+
+    const feelSummary = Object.entries(feelCounts)
+      .map(([k, v]) => `${k} ${Math.round((v / total) * 100)}%`)
+      .join(', ');
+
+    const weatherSummary = Object.entries(weatherCounts)
+      .map(([k, v]) => `${k} ${Math.round((v / total) * 100)}%`)
+      .join(', ');
+
+    box.style.display = 'block';
+    box.innerHTML = `📢 <b>${selectedCity} 오늘 제보 요약 (총 ${total}건)</b><br>` +
+                    `체감 온도: ${feelSummary}<br>` +
+                    `현장 날씨: ${weatherSummary}`;
   }
 
   // 제보자 GPS 자동 위치 조회
@@ -250,9 +312,6 @@
       return;
     }
 
-    const locInput = document.getElementById('repLocation');
-    locInput.value = "위치 정보 확인 중...";
-
     navigator.geolocation.getCurrentPosition(async (position) => {
       const lat = position.coords.latitude;
       const lon = position.coords.longitude;
@@ -261,32 +320,41 @@
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
         const data = await res.json();
         const addr = data.address;
-        const locationName = `${addr.province || addr.city || ''} ${addr.borough || addr.suburb || ''}`.trim() || "현재 위치";
-        locInput.value = locationName;
+        const region = addr.province || addr.city || '';
+
+        const repSelect = document.getElementById('repCitySelect');
+        for (let i = 0; i < repSelect.options.length; i++) {
+          if (region.includes(repSelect.options[i].value.substring(0, 2))) {
+            repSelect.selectedIndex = i;
+            break;
+          }
+        }
+        alert(`현재 위치 기반으로 [${repSelect.value}]가 선택되었습니다.`);
       } catch (e) {
-        locInput.value = `위도:${lat.toFixed(3)}, 경도:${lon.toFixed(3)}`;
+        alert("위치 주소 변환에 실패했습니다.");
       }
     }, () => {
       alert("위치 정보를 가져올 수 없습니다.");
-      locInput.value = "";
     });
   }
 
   // 현장 사용자: 제보 등록
   document.getElementById('reportForm').addEventListener('submit', (e) => {
     e.preventDefault();
-    const repLoc = document.getElementById('repLocation').value || "현장 제보 지역";
-    
-    sharedReport = {
-      location: repLoc,
-      feelTemp: document.getElementById('repFeelTemp').value,
-      weatherCondition: document.getElementById('repWeather').value
-    };
+    const city = document.getElementById('repCitySelect').value;
+    const feelTemp = document.getElementById('repFeelTemp').value;
+    const weather = document.getElementById('repWeather').value;
 
-    alert('현장 제보가 등록되었습니다!');
-    document.getElementById('reportStatus').innerText = `📢 최신 현장 제보 반영됨 [${repLoc}]: 체감 (${sharedReport.feelTemp}), 날씨 (${sharedReport.weatherCondition})`;
+    reports.push({ city, feelTemp, weather });
+
+    alert(`${city} 현장 제보가 성공적으로 등록되었습니다!`);
     switchTab('recommendTab');
   });
+
+  // 초기화 시 선택된 도시의 제보 확인
+  window.onload = function() {
+    checkReportStatus();
+  };
 
   // 옷차림 추천 요청
   document.getElementById('recommendForm').addEventListener('submit', async (e) => {
@@ -294,19 +362,19 @@
 
     const select = document.getElementById('recCitySelect');
     const selectedOption = select.options[select.selectedIndex];
-
     const locationName = select.value;
     const lat = selectedOption.dataset.lat;
     const lon = selectedOption.dataset.lon;
+
+    // 해당 지역 제보 요약 텍스트 생성
+    const box = document.getElementById('reportStatusBox');
+    const targetReportSummary = box.style.display !== 'none' ? box.innerText : '';
 
     const payload = {
       locationName,
       lat,
       lon,
-      hasReport: sharedReport !== null,
-      feelTemp: sharedReport?.feelTemp || '',
-      weatherCondition: sharedReport?.weatherCondition || '',
-      reportLocation: sharedReport?.location || ''
+      targetReportSummary
     };
 
     const btn = document.getElementById('recommendBtn');

@@ -3,7 +3,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { locationName, lat, lon, hasReport, feelTemp, weatherCondition, reportLocation } = req.body;
+  const { locationName, lat, lon, targetReportSummary, feelTemp, weatherCondition, reportLocation } = req.body;
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
@@ -31,28 +31,26 @@ UV 지수: ${current.uv_index ?? '알 수 없음'}
       }
     }
 
-    // 2. 제보 여부에 따른 설명 구성
+    // 2. 제보 요약 정보 유무에 따른 프롬프트 구성
     let reportPrompt = "";
-    if (hasReport) {
+    if (targetReportSummary) {
       reportPrompt = `
-[현장 이용자의 실시간 제보]
-제보 위치: ${reportLocation || '목적지 인근'}
-현장 체감 온도: ${feelTemp}
-현장 날씨 상황: ${weatherCondition}
-* 정밀 기상 데이터와 현장 제보를 함께 고려하세요.
+[선택한 목적지 현장 제보 요약]
+${targetReportSummary}
+* 정밀 기상 데이터와 해당 지역 현장 제보 요약을 함께 종합적으로 고려하여 옷차림을 추천하세요.
       `.trim();
     } else {
       reportPrompt = `
-[현장 제보 정보]
-등록된 현장 제보가 없습니다.
-* 정밀 기상 데이터(기온, 습도, 강수량, UV 지수)를 바탕으로 추천하세요.
+[선택한 목적지 현장 제보 정보]
+해당 지역에 등록된 오늘자 현장 제보가 없습니다.
+* 정밀 기상 데이터(기온, 습도, 강수량, UV 지수)만을 바탕으로 가장 적절한 옷차림을 추천하세요.
       `.trim();
     }
 
     // 3. Gemini API 프롬프트 (단어:설명 형식 강제)
     const prompt = `
 당신은 패션 코디 AI입니다.
-선택한 지역의 기상 데이터와 현장 제보(있는 경우)를 바탕으로 옷차림을 추천해주세요.
+선택한 지역의 기상 데이터와 현장 제보 요약(있는 경우)을 바탕으로 옷차림을 추천해주세요.
 
 [목적지 정보]
 위치: ${locationName}
@@ -76,7 +74,7 @@ ${reportPrompt}
     `;
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -94,7 +92,7 @@ ${reportPrompt}
     const data = await response.json();
     let reply = data.candidates?.[0]?.content?.parts?.[0]?.text || '추천 결과를 생성할 수 없습니다.';
 
-    // 백엔드 차원에서 마크다운 특수문자(*, #, @) 필터링
+    // 마크다운 특수문자(*, #, @) 제거
     reply = reply.replace(/[*#@]/g, '');
 
     return res.status(200).json({ result: reply });
